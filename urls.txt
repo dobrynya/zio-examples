@@ -1,0 +1,7 @@
+http://www.ovh.net/files/100Mio.dat,62501d556539559fb422943553cd235a
+http://www.ovh.net/files/100Mio.dat,a654asd65654fsd65asd
+file:gradle/wrapper/gradle-wrapper.jar,ae4eb03f944bce8d3abe03b82bdbca35
+garbage
+http://www.ovh.net/files/10Mio.dat,a654asd65654fsd65asd
+file:gradle/wrapper/gradle-wrapper.no,a654asd65654fsd65asd
+http://www.ovh.net/files/1Mb.dat,62501d556539559fb422943553cd235a

@@ -1,0 +1,18 @@
+plugins {
+    id "scala"
+    id "application"
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation "org.scala-lang:scala-library:2.13+"
+    implementation "dev.zio:zio_2.13:1.0.0+"
+    implementation "dev.zio:zio-streams_2.13:1.0.0+"
+}
+
+application {
+    mainClassName = "com.gh.dobrynya.md5checker.Md5Checker"
+}
