@@ -11,7 +11,23 @@ dependencies {
     implementation "org.scala-lang:scala-library:2.13+"
     implementation "dev.zio:zio_2.13:1.0.0+"
     implementation "dev.zio:zio-streams_2.13:1.0.0+"
+    implementation "dev.zio:zio-logging_2.13:0.0.4"
+    implementation "dev.zio:zio-logging-slf4j_2.13:0.0.4"
+    implementation "dev.zio:zio-interop-cats_2.13:+"
+    implementation  "ch.qos.logback:logback-classic:1.2.3"
+    implementation "org.http4s:http4s-blaze-client_2.13:+"
+
+    testImplementation "dev.zio:zio-test_2.13:1.0.0-RC17"
+    testImplementation "dev.zio:zio-test-sbt_2.13:+"
 }
+
+task runZioTests(type: JavaExec) {
+    dependsOn(testClasses)
+    classpath = sourceSets.test.runtimeClasspath
+    main = "com.gh.dobrynya.md5checker.Md5CheckerTest"
+}
+
+test.dependsOn += runZioTests
 
 application {
     mainClassName = "com.gh.dobrynya.md5checker.Md5Checker"
