@@ -1,6 +1,5 @@
 package com.gh.dobrynya.md5checker
 
-import scala.io.Source
 import java.security.MessageDigest
 import zio._
 import console._
@@ -14,13 +13,17 @@ object Md5Checker extends App {
     override def formatMessage(msg: String): ZIO[Any, Nothing, String] = ZIO.effectTotal(msg)
   }
 
+  def bytes2strings[R, E](bytes: ZStream[R, E, Chunk[Byte]]): ZStream[R, E, String] =
+    ZStreamChunk(bytes.transduce[R, E, Chunk[Byte], String](Sink.utf8DecodeChunk).transduce(Sink.splitLines))
+      .flattenChunks
+
   def readFileDescriptions(url: String): ZIO[HttpClient with Blocking with Logging[String], Throwable, List[String]] =
     for {
-      content <-
-        logger.info(s"Reading files URLs to check MD5 hash from $url") *>
-          ZIO.accessM[HttpClient with Blocking with Logging[String]](_.httpClient.download(url).run(ZSink.utf8DecodeChunk))
-          files = Source.fromString(content).getLines().toList
-          _ <- logger.info(s"It needs to check the following files $files")
+      _ <- logger.info(s"Reading files URLs to check MD5 hash from $url")
+      files <- ZIO.accessM[HttpClient with Blocking with Logging[String]] { r =>
+        bytes2strings(r.httpClient.download(url)).runCollect
+      }
+      _ <- logger.info(s"It needs to check the following files $files")
     } yield files
 
   def md5Hash[R] =
