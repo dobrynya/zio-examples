@@ -5,11 +5,10 @@ import zio._
 import console._
 import stream._
 import blocking.Blocking
+import com.gh.dobrynya.md5checker.http.HttpClient
 
 object Md5Checker extends App {
-  type MyEnv = Has[HttpClient] with Blocking with Console
-
-  val env = HttpClient.live ++ Console.live ++ Blocking.live
+  type MyEnv = HttpClient with Blocking with Console
 
   def bytes2strings[R, E](bytes: ZStream[R, E, Chunk[Byte]]): ZStream[R, E, String] =
     ZStreamChunk(bytes.transduce[R, E, Chunk[Byte], String](Sink.utf8DecodeChunk).transduce(Sink.splitLines))
@@ -18,7 +17,7 @@ object Md5Checker extends App {
   def readFileDescriptions(url: String): ZIO[MyEnv, Throwable, List[String]] =
     for {
       _ <- console.putStrLn(s"Reading files URLs to check MD5 hash from $url")
-      files <- ZIO.accessM[MyEnv](r => bytes2strings(r.get.httpClient.download(url)).runCollect)
+      files <- ZIO.accessM[MyEnv](r => bytes2strings(r.get.download(url)).runCollect)
       _ <- console.putStrLn(s"It needs to check the following files $files")
     } yield files
 
@@ -40,7 +39,7 @@ object Md5Checker extends App {
 
   def calculateMd5(description: FileDescription): RIO[MyEnv, String] =
     for {
-      http <- ZIO.access[MyEnv](_.get.httpClient)
+      http <- ZIO.access[MyEnv](_.get)
       line <- (if (description.valid) http.download(description.url).run(md5Hash)
         .map(md5 => description.copy(calculatedMd5 = Some(md5)))
         .catchAll(th =>
@@ -59,6 +58,5 @@ object Md5Checker extends App {
     } yield ()
 
   override def run(args: List[String]): ZIO[zio.ZEnv, Nothing, Int] =
-    program.provideLayer(env).fold(_ => 0, _ => 0)
-//      .catchAll(th => ZIO.effectTotal(th.printStackTrace())).as(0)
+    program.provideCustomLayer(HttpClient.live).fold(_ => 0, _ => 0)
 }

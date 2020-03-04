@@ -1,15 +1,14 @@
 package com.gh.dobrynya.md5checker
 
 import java.nio.charset.StandardCharsets
-
 import com.gh.dobrynya.md5checker.Md5Checker._
 import zio.test._
 import zio.stream._
 import Assertion._
+import com.gh.dobrynya.md5checker.http.HttpClient
 import zio.{Chunk, ZIO}
 import zio.test.TestAspect._
 import zio.test.junit.JUnitRunnableSpec
-
 import scala.io.Source
 
 //noinspection SourceNotClosed
@@ -17,12 +16,12 @@ class Md5CheckerTest extends JUnitRunnableSpec {
   override def spec: ZSpec[_root_.zio.test.environment.TestEnvironment, Any] =
     suite("Md5 checker tests")(
       testM("readFileDescriptions should fail when reading a wrong URL")(
-        assertM(readFileDescriptions("file:non-existent-file").provideLayer(env))(anything)
+        assertM(readFileDescriptions("file:non-existent-file").provideCustomLayer(HttpClient.live))(anything)
       ) @@ failure,
       testM("readFileDescriptions should read a file successfully")(
         for {
           expected <- ZIO.effect(Source.fromFile("urls.txt").getLines().toList)
-          actual <- readFileDescriptions("file:urls.txt").provideLayer(env)
+          actual <- readFileDescriptions("file:urls.txt").provideCustomLayer(HttpClient.live)
         } yield assert(actual)(equalTo(expected))
       ),
       testM("Calculating a hash for a string should succeed")(
@@ -35,7 +34,7 @@ class Md5CheckerTest extends JUnitRunnableSpec {
       testM("Calculating a hash for a concrete file should succeed")(
         assertM(
           calculateMd5(FileDescription("file:gradle/wrapper/gradle-wrapper.jar",
-            "ae4eb03f944bce8d3abe03b82bdbca35")).provideLayer(env))(
+            "ae4eb03f944bce8d3abe03b82bdbca35")).provideCustomLayer(HttpClient.live))(
           containsString("file:gradle/wrapper/gradle-wrapper.jar") &&
             containsString("ae4eb03f944bce8d3abe03b82bdbca35")
         )
