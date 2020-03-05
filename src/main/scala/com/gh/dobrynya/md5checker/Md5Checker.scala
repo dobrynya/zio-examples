@@ -49,14 +49,13 @@ object Md5Checker extends App {
       _ <- putStrLn(line)
     } yield line
 
-  val url = "file:urls.txt"
-
-  val program =
+  def program(url: String) =
     for {
       list <- readFileDescriptions(url).map(_.map(FileDescription.of))
       _ <- ZIO.collectAllParN(4)(list.map(calculateMd5))
     } yield ()
 
   override def run(args: List[String]): ZIO[zio.ZEnv, Nothing, Int] =
-    program.provideCustomLayer(HttpClient.live).fold(_ => 0, _ => 0)
+    ZIO.when(args.isEmpty)(console.putStrLn("File list URL has not been specified, using default")) *>
+      program(args.headOption.getOrElse("file:urls.txt")).provideCustomLayer(HttpClient.live).fold(_ => 0, _ => 0)
 }
