@@ -13,7 +13,7 @@ import scala.io.Source
 
 //noinspection SourceNotClosed
 class Md5CheckerTest extends JUnitRunnableSpec {
-  override def spec: ZSpec[_root_.zio.test.environment.TestEnvironment, Any] =
+  override def spec =
     suite("Md5 checker tests")(
       testM("readFileDescriptions should fail when reading a wrong URL")(
         assertM(readFileDescriptions("file:non-existent-file").provideCustomLayer(HttpClient.live))(anything)

@@ -11,8 +11,7 @@ dependencies {
     implementation "org.scala-lang:scala-library:2.13+"
     implementation "dev.zio:zio_2.13:1.0.0+"
     implementation "dev.zio:zio-streams_2.13:1.0.0+"
-    implementation  "ch.qos.logback:logback-classic:1.2.3"
-    testImplementation "dev.zio:zio-test_2.13:1.0.0-RC17"
+    testImplementation "dev.zio:zio-test_2.13:1.0.0+"
     testImplementation "dev.zio:zio-test-junit_2.13:1+"
 }
 

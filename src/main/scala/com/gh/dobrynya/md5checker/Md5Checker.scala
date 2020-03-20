@@ -17,7 +17,7 @@ object Md5Checker extends App {
   def readFileDescriptions(url: String): ZIO[MyEnv, Throwable, List[String]] =
     for {
       _ <- console.putStrLn(s"Reading files URLs to check MD5 hash from $url")
-      files <- ZIO.accessM[MyEnv](r => bytes2strings(r.get.download(url)).runCollect)
+      files <- ZIO.accessM[HttpClient](r => bytes2strings(r.get.download(url)).runCollect)
       _ <- console.putStrLn(s"It needs to check the following files $files")
     } yield files
 
@@ -39,7 +39,7 @@ object Md5Checker extends App {
 
   def calculateMd5(description: FileDescription): RIO[MyEnv, String] =
     for {
-      http <- ZIO.access[MyEnv](_.get)
+      http <- ZIO.access[HttpClient](_.get)
       line <- (if (description.valid) http.download(description.url).run(md5Hash)
         .map(md5 => description.copy(calculatedMd5 = Some(md5)))
         .catchAll(th =>
