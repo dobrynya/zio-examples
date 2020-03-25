@@ -5,14 +5,13 @@ import zio._
 import console._
 import stream._
 import blocking.Blocking
-import com.gh.dobrynya.md5checker.http.HttpClient
+import com.gh.dobrynya.http.HttpClient
 
 object Md5Checker extends App {
   type MyEnv = HttpClient with Blocking with Console
 
   def bytes2strings[R, E](bytes: ZStream[R, E, Chunk[Byte]]): ZStream[R, E, String] =
-    ZStreamChunk(bytes.transduce[R, E, Chunk[Byte], String](Sink.utf8DecodeChunk).transduce(Sink.splitLines))
-      .flattenChunks
+    bytes.transduce(ZSink.utf8DecodeChunk).transduce(ZSink.splitLines).mapConcatChunk(identity)
 
   def readFileDescriptions(url: String): ZIO[MyEnv, Throwable, List[String]] =
     for {

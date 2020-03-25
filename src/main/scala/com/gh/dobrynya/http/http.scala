@@ -1,4 +1,4 @@
-package com.gh.dobrynya.md5checker
+package com.gh.dobrynya
 
 import java.net.URL
 import zio._
