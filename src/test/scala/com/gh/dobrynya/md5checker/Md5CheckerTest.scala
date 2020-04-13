@@ -5,7 +5,7 @@ import com.gh.dobrynya.md5checker.Md5Checker._
 import zio.test._
 import zio.stream._
 import Assertion._
-import com.gh.dobrynya.md5checker.http.HttpClient
+import com.gh.dobrynya.http.HttpClient
 import zio.{Chunk, ZIO}
 import zio.test.TestAspect._
 import zio.test.junit.JUnitRunnableSpec
