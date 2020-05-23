@@ -8,27 +8,20 @@ import zio.console.Console
 package object http {
   type HttpClient = Has[HttpClient.Service]
 
-  def download(url: String): ZStream[HttpClient, Throwable, Chunk[Byte]] =
+  def download(url: String): ZStream[HttpClient, Throwable, Byte] =
     ZStream.unwrap(ZIO.access[HttpClient](_.get.download(url)))
 
   object HttpClient {
     trait Service {
-      def download(url: String): Stream[Throwable, Chunk[Byte]]
+      def download(url: String): Stream[Throwable, Byte]
     }
 
     val live: ZLayer[Console with Blocking, Nothing, HttpClient] =
       ZLayer.fromServices[Console.Service, Blocking.Service, HttpClient.Service]((console, blocking) =>
-        new Service {
-          private def showError(th: Throwable) =
-            console.putStrLn(s"An error occurred: ${th.getMessage}!")
-
-          override def download(url: String) =
-            Stream.managed(ZManaged.make(
-              console.putStrLn(s"Downloading a file from $url") *>
-                blocking.effectBlocking(new URL(url).openStream())
-                  .tapError(showError))(is => blocking.effectBlocking(is.close()).ignore)
-            ).flatMap(Stream.fromInputStream(_).chunks)
-        }
+        (url: String) => Stream.fromInputStreamEffect(
+          console.putStrLn(s"Downloading a file from $url") *>
+            Task(new URL(url).openStream()).refineToOrDie)
+          .provideLayer(ZLayer.succeed(blocking))
       )
   }
 }

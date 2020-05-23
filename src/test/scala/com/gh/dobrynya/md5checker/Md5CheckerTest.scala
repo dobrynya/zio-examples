@@ -1,6 +1,5 @@
 package com.gh.dobrynya.md5checker
 
-import java.nio.charset.StandardCharsets
 import com.gh.dobrynya.md5checker.Md5Checker._
 import zio.test._
 import zio.stream._
@@ -17,7 +16,7 @@ class Md5CheckerTest extends JUnitRunnableSpec {
     suite("Md5 checker tests")(
       testM("readFileDescriptions should fail when reading a wrong URL")(
         assertM(readFileDescriptions("file:non-existent-file").provideCustomLayer(HttpClient.live))(anything)
-      ) @@ failure,
+      ) @@ failing,
       testM("readFileDescriptions should read a file successfully")(
         for {
           expected <- ZIO.effect(Source.fromFile("urls.txt").getLines().toList)
@@ -26,8 +25,7 @@ class Md5CheckerTest extends JUnitRunnableSpec {
       ),
       testM("Calculating a hash for a string should succeed")(
         assertM(
-          Stream.apply("just a string to calculate its MD5 hash")
-            .map { s => Chunk.fromArray(s.getBytes(StandardCharsets.UTF_8)) }
+          Stream.fromIterable("just a string to calculate its MD5 hash".getBytes())
             .run(md5Hash))(equalTo("9a3bd129258e40744133e4a38e5ab99d")
         )
       ),
