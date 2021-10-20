@@ -4,9 +4,8 @@ import java.nio.file.attribute.BasicFileAttributes
 import java.nio.file.{Files, Path, Paths, StandardOpenOption}
 import java.time.format.DateTimeFormatter
 import java.time.{LocalDateTime, ZoneId}
-import zio._
+import zio._, console._
 import zio.clock.Clock
-import zio.console.Console
 import zio.duration._
 import zio.stream._
 import scala.jdk.CollectionConverters._
@@ -23,9 +22,9 @@ object DirectoryWorm extends App {
        |size = ${attrs.size()}]""".stripMargin
   }
 
-  def storeDirectoryContent(path: Path, exclude: Set[Path]): Task[(Option[(Path, Path)], Iterator[Path])] =
-    if (exclude.contains(path)) Task((None, Iterator.empty))
-    else IO.effect {
+  private def storeDirectoryContent(path: Path, exclude: Set[Path]): Task[(Option[(Path, Path)], Iterator[Path])] =
+    if (exclude.contains(path)) ZIO.succeed((None, Iterator.empty))
+    else Task {
       val (dirs, files) = Files.list(path).iterator().asScala.partition(Files.isDirectory(_))
       if (files.nonEmpty) {
         val temp = Files.createTempFile(Paths.get("./temp"), "", ".txt")
@@ -34,16 +33,16 @@ object DirectoryWorm extends App {
       } else (None, dirs)
     }
 
-  def readDirectory(path: Path, exclude: Set[Path]): UIO[List[(Path, Path)]] =
+  private def readDirectory(path: Path, exclude: Set[Path]): UIO[List[(Path, Path)]] =
     storeDirectoryContent(path, exclude).flatMap {
       case (temp, dirs) => ZIO.collectAllPar(dirs.map(readDirectory(_, exclude)).toList).map(_.flatten ++ temp.toList)
     }.catchAll(_ => ZIO.succeed(List.empty))
 
-  def readDirectories(paths: List[Path], exclude: Set[Path]): UIO[List[(Path, Path)]] =
-    ZIO.collectAllPar(paths.map(readDirectory(_, exclude))).map(_.flatten)
+  private def readDirectories(paths: List[Path], exclude: Set[Path]): UIO[List[(Path, Path)]] =
+    ZIO.foreachPar(paths)(readDirectory(_, exclude)).map(_.flatten)
 
-  def collapseFiles(target: Path, files: List[(Path, Path)]) =
-    ZIO.effect {
+  private def collapseFiles(target: Path, files: List[(Path, Path)]): UIO[Unit] =
+    Task {
       Files.deleteIfExists(target)
       val out = Files.createFile(target)
       files.sortBy(_._1).foreach { p =>
@@ -51,15 +50,17 @@ object DirectoryWorm extends App {
       }
     }.catchAll(th => ZIO.effectTotal(th.printStackTrace()))
 
-  def makeIndicator: ZIO[Console with Clock, Nothing, Unit] =
-    Stream.iterate(1)(_ + 1).throttleShape(1, 6.seconds)(_ => 1)
-      .tap(counter => console.putStr(if (counter % 10 == 0) "|" else ".")).runDrain
+  private def makeIndicator: ZIO[Console with Clock, Nothing, Unit] =
+    (Stream.tick(6.seconds) &> Stream.iterate(1)(_ + 1))
+      .tap(counter => console.putStr(if (counter % 10 == 0) "|" else "."))
+      .runDrain
+      .ignore
 
   override def run(args: List[String]) = {
     val (exclude, traverse) = args.partition(_.startsWith("-"))
     if (traverse.isEmpty)
       console.putStrLn("Program should be run with a list of directories to traverse and to exclude from " +
-        "traversing using minus") *> ZIO.succeed(0)
+        "traversing using minus").exitCode
     else
       for {
         indicator <- makeIndicator.fork
@@ -67,6 +68,6 @@ object DirectoryWorm extends App {
           exclude.map(s => Paths.get(s.tail).normalize().toAbsolutePath).to(Set))
         _ <- collapseFiles(Paths.get("list.txt"), dirs)
         _ <- indicator.interrupt
-      } yield 0
+      } yield ExitCode.success
   }
 }

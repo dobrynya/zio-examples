@@ -1,20 +1,23 @@
 package com.gh.dobrynya.md5checker
 
+import java.io.IOException
 import java.security.MessageDigest
 import com.gh.dobrynya.http
 import com.gh.dobrynya.http.HttpClient
-import zio._, stream._
+import com.gh.dobrynya.http.HttpClient.download
+import zio._
+import stream._
 
 object Md5Checker extends App {
   def bytes2strings[R, E](bytes: ZStream[R, E, Byte]): ZStream[R, E, String] =
-    bytes.transduce(ZTransducer.utf8Decode).transduce(ZTransducer.splitLines)
+    bytes>>> ZTransducer.utf8Decode >>> ZTransducer.splitLines
 
   def readFileDescriptions(url: String) =
     for {
       _ <- console.putStrLn(s"Reading files URLs to check MD5 hash from $url")
-      files <- http.download(url).via(bytes2strings[HttpClient, Throwable]).runCollect
+      files <- download(url).via(bytes2strings[Has[HttpClient], IOException]).runCollect
       _ <- console.putStrLn(s"It needs to check the following files $files")
-    } yield files
+    } yield files.toList
 
   def md5Hash[R] =
     ZSink.foldLeftChunks(MessageDigest.getInstance("MD5")) { (hasher, chunk: Chunk[Byte]) =>
@@ -34,7 +37,7 @@ object Md5Checker extends App {
 
   def calculateMd5(description: FileDescription) =
     for {
-      line <- (if (description.valid) http.download(description.url).run(md5Hash)
+      line <- (if (description.valid) download(description.url).run(md5Hash)
         .map(md5 => description.copy(calculatedMd5 = Some(md5)))
         .catchAll(th =>
           console.putStrLn(s"An error occurred $th!") *>
@@ -46,10 +49,12 @@ object Md5Checker extends App {
   def program(url: String) =
     for {
       list <- readFileDescriptions(url).map(_.map(FileDescription.of))
-      _ <- ZIO.collectAllPar(list.map(calculateMd5))
+      _ <- ZIO.foreachPar_(list)(calculateMd5)
     } yield ()
 
-  override def run(args: List[String]): ZIO[zio.ZEnv, Nothing, Int] =
-    ZIO.when(args.isEmpty)(console.putStrLn("File list URL has not been specified, using default")) *>
-      program(args.headOption.getOrElse("file:urls.txt")).provideSomeLayer(HttpClient.live).fold(_ => 1, _ => 0)
+  override def run(args: List[String]): ZIO[zio.ZEnv, Nothing, ExitCode] =
+    (ZIO.when(args.isEmpty)(console.putStrLn("File list URL has not been specified, using default")) *>
+      program(args.headOption.getOrElse("file:urls.txt"))
+        .provideSomeLayer(HttpClient.live))
+      .exitCode
 }
