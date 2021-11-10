@@ -7,11 +7,9 @@ import Assertion._
 import com.gh.dobrynya.http.HttpClient
 import zio.{Chunk, ZIO}
 import zio.test.TestAspect._
-import zio.test.junit.JUnitRunnableSpec
 import scala.io.Source
 
-//noinspection SourceNotClosed
-class Md5CheckerTest extends JUnitRunnableSpec {
+object Md5CheckerTest extends DefaultRunnableSpec {
   override def spec =
     suite("Md5 checker tests")(
       testM("readFileDescriptions should fail when reading a wrong URL")(

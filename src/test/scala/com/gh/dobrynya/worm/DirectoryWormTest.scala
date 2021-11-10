@@ -4,9 +4,8 @@ import java.nio.file.Paths
 import DirectoryWorm._
 import zio.test._
 import zio.test.Assertion._
-import zio.test.junit.JUnitRunnableSpec
 
-class DirectoryWormTest extends JUnitRunnableSpec {
+class DirectoryWormTest extends DefaultRunnableSpec {
   override def spec =
     suite("Directory Worm test suite")(
       test("Make file description should include all required attributes") {
