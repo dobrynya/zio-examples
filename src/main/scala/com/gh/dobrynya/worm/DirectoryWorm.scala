@@ -4,13 +4,11 @@ import java.nio.file.attribute.BasicFileAttributes
 import java.nio.file.{Files, Path, Paths, StandardOpenOption}
 import java.time.format.DateTimeFormatter
 import java.time.{LocalDateTime, ZoneId}
-import zio._, console._
-import zio.clock.Clock
-import zio.duration._
-import zio.stream._
-import scala.jdk.CollectionConverters._
+import zio.*
+import zio.stream.*
+import scala.jdk.CollectionConverters.*
 
-object DirectoryWorm extends App {
+object DirectoryWorm extends ZIOAppDefault {
   private val format = DateTimeFormatter.ISO_DATE_TIME
 
   private[worm] def makeFileDescription(file: Path) = {
@@ -48,26 +46,30 @@ object DirectoryWorm extends App {
       files.sortBy(_._1).foreach { p =>
         Files.write(out, Files.readAllBytes(p._2), StandardOpenOption.APPEND)
       }
-    }.catchAll(th => ZIO.effectTotal(th.printStackTrace()))
+    }.catchAll(th => ZIO.succeed(th.printStackTrace()))
 
   private def makeIndicator: ZIO[Console with Clock, Nothing, Unit] =
     (Stream.tick(6.seconds) &> Stream.iterate(1)(_ + 1))
-      .tap(counter => console.putStr(if (counter % 10 == 0) "|" else "."))
+      .tap(counter => Console.printLine(if (counter % 10 == 0) "|" else "."))
       .runDrain
       .ignore
 
-  override def run(args: List[String]) = {
-    val (exclude, traverse) = args.partition(_.startsWith("-"))
-    if (traverse.isEmpty)
-      console.putStrLn("Program should be run with a list of directories to traverse and to exclude from " +
-        "traversing using minus").exitCode
-    else
-      for {
-        indicator <- makeIndicator.fork
-        dirs <- readDirectories(traverse.map(Paths.get(_).normalize().toAbsolutePath).filter(Files.isDirectory(_)),
-          exclude.map(s => Paths.get(s.tail).normalize().toAbsolutePath).to(Set))
-        _ <- collapseFiles(Paths.get("list.txt"), dirs)
-        _ <- indicator.interrupt
-      } yield ExitCode.success
-  }
+
+  override def run =
+    for {
+      args <- ZIOAppArgs.getArgs
+      (exclude, traverse) = args.toList.partition(_.startsWith("-"))
+      _ <- Console.printLine("Program should be run with a list of directories to traverse and to exclude from " +
+        "traversing using minus").when(traverse.isEmpty)
+      _ <- runTraverse(traverse, exclude).when(traverse.nonEmpty)
+    } yield ()
+
+  private def runTraverse(traverse: List[String], exclude: List[String]) =
+    for {
+      indicator <- makeIndicator.fork
+      dirs <- readDirectories(traverse.map(Paths.get(_).normalize().toAbsolutePath).filter(Files.isDirectory(_)),
+        exclude.map(s => Paths.get(s.tail).normalize().toAbsolutePath).to(Set))
+      _ <- collapseFiles(Paths.get("list.txt"), dirs)
+      _ <- indicator.interrupt
+    } yield ()
 }

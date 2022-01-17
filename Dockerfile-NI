@@ -1,0 +1,10 @@
+FROM quay.io/quarkus/ubi-quarkus-native-image:21.3.0-java11 AS build
+COPY . /app
+WORKDIR /app
+USER root:root
+RUN ./sbt graalvm-native-image:packageBin
+
+#FROM alpine
+#COPY --from=build /app/target/graalvm-native-image/zio-examples /zio-examples
+#ENTRYPOINT ["/zio-examples"]
+

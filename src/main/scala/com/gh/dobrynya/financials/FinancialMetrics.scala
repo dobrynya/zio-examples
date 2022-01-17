@@ -1,8 +1,8 @@
 package com.gh.dobrynya.financials
 
 import zio.*
-import blocking.Blocking
 import zio.stream.*
+import java.io.File
 import java.nio.file.Paths
 import java.time.{DayOfWeek, LocalDate, Month}
 import java.time.format.DateTimeFormatter
@@ -32,11 +32,11 @@ def date(from: LocalDate = LocalDate.MIN, to: LocalDate = LocalDate.MAX) =
 val workingDays: (Instrument => Boolean) =
   (i: Instrument) => i.date.getDayOfWeek != DayOfWeek.SUNDAY && i.date.getDayOfWeek != DayOfWeek.SATURDAY
 
-object FinancialMetrics extends App:
+object FinancialMetrics extends ZIOAppDefault:
   val raw =
-    ZStream.fromFile(Paths.get("instruments.txt")) >>> ZTransducer.utfDecode >>> ZTransducer.splitLines
+    ZStream.fromFile(new File("instruments.txt")).via(ZPipeline.utfDecode).via(ZPipeline.splitLines)
 
-  val instruments: ZStream[Blocking, Throwable, Instrument] =
+  val instruments: ZStream[Any, Throwable, Instrument] =
     raw.map(Instrument.parse).collectSome
       .filter(date(to = LocalDate.of(2014, NOVEMBER, 19)) and workingDays)
 
@@ -53,7 +53,7 @@ object FinancialMetrics extends App:
   def makeCalculation[R](hub: Hub[Instrument], sink: Sink[Nothing, Instrument, Nothing, R], filter: Instrument => Boolean): URIO[Any, Fiber.Runtime[Nothing, R]] =
     ZStream.fromHub(hub).filter(filter).run(sink).fork
 
-  override def run(args: List[String]) =
+  override def run =
     (for {
       hub <- ZHub.unbounded[Instrument]
       i1mean <- makeCalculation(hub, mean, name("INSTRUMENT1"))
@@ -61,9 +61,9 @@ object FinancialMetrics extends App:
         date(LocalDate.of(2014, NOVEMBER, 1), LocalDate.of(2014, NOVEMBER, 30)))
       i3sumLast <- makeCalculation(hub, sumLast(10), name("INSTRUMENT3"))
       _ <- instruments.foreach(hub.publish)
-      _ <- console.putStrLn("Completed reading file")
+      _ <- Console.printLine("Completed reading file")
       _ <- hub.shutdown
-      _ <- i1mean.join.flatMap(d => console.putStrLn(s"Mean for INSTRUMENT1 is $d"))
-      _ <- i2mean4november2014.join.flatMap(d => console.putStrLn(s"Mean for INSTRUMENT2 for November 2014 is $d"))
-      _ <- i3sumLast.join.flatMap(d => console.putStrLn(s"Sum of 10 recent prices for INSTRUMENT3 is $d"))
+      _ <- i1mean.join.flatMap(d => Console.printLine(s"Mean for INSTRUMENT1 is $d"))
+      _ <- i2mean4november2014.join.flatMap(d => Console.printLine(s"Mean for INSTRUMENT2 for November 2014 is $d"))
+      _ <- i3sumLast.join.flatMap(d => Console.printLine(s"Sum of 10 recent prices for INSTRUMENT3 is $d"))
     } yield ()).exitCode
