@@ -10,10 +10,9 @@ trait HttpClient {
   def download(url: String): Stream[IOException, Byte]
 }
 
-object HttpClient {
-  def download(url: String): ZStream[HttpClient, IOException, Byte] =
-    ZStream.serviceWithStream[HttpClient](_.download(url))
+def download(url: String): ZStream[HttpClient, IOException, Byte] = ZStream.serviceWithStream[HttpClient](_.download(url))
 
+object HttpClient {
   private class HttpClientLive(console: Console) extends HttpClient {
     def download(url: String): Stream[IOException, Byte] =
       ZStream.fromInputStreamZIO(
