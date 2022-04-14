@@ -22,7 +22,7 @@ object DirectoryWorm extends ZIOAppDefault {
 
   private def storeDirectoryContent(path: Path, exclude: Set[Path]): Task[(Option[(Path, Path)], Iterator[Path])] =
     if (exclude.contains(path)) ZIO.succeed((None, Iterator.empty))
-    else Task {
+    else ZIO.attemptBlocking {
       val (dirs, files) = Files.list(path).iterator().asScala.partition(Files.isDirectory(_))
       if (files.nonEmpty) {
         val temp = Files.createTempFile(Paths.get("./temp"), "", ".txt")
@@ -36,11 +36,12 @@ object DirectoryWorm extends ZIOAppDefault {
       case (temp, dirs) => ZIO.collectAllPar(dirs.map(readDirectory(_, exclude)).toList).map(_.flatten ++ temp.toList)
     }.catchAll(_ => ZIO.succeed(List.empty))
 
-  private def readDirectories(paths: List[Path], exclude: Set[Path]): UIO[List[(Path, Path)]] =
-    ZIO.foreachPar(paths)(readDirectory(_, exclude)).map(_.flatten)
+  private def readDirectories(paths: List[Path], exclude: Set[Path]) =
+    Console.printLine(s"read directories $paths") *>
+      ZIO.foreachPar(paths)(readDirectory(_, exclude)).map(_.flatten)
 
   private def collapseFiles(target: Path, files: List[(Path, Path)]): UIO[Unit] =
-    Task {
+    ZIO.attemptBlocking {
       Files.deleteIfExists(target)
       val out = Files.createFile(target)
       files.sortBy(_._1).foreach { p =>
@@ -48,9 +49,9 @@ object DirectoryWorm extends ZIOAppDefault {
       }
     }.catchAll(th => ZIO.succeed(th.printStackTrace()))
 
-  private def makeIndicator: ZIO[Console with Clock, Nothing, Unit] =
+  private def makeIndicator: UIO[Unit] =
     (Stream.tick(6.seconds) &> Stream.iterate(1)(_ + 1))
-      .tap(counter => Console.printLine(if (counter % 10 == 0) "|" else "."))
+      .tap(counter => Console.print(if (counter % 10 == 0) "|" else "."))
       .runDrain
       .ignore
 
@@ -59,6 +60,7 @@ object DirectoryWorm extends ZIOAppDefault {
     for {
       args <- ZIOAppArgs.getArgs
       (exclude, traverse) = args.toList.partition(_.startsWith("-"))
+      _ <- Console.printLine(s"${traverse} directories should be traversed")
       _ <- Console.printLine("Program should be run with a list of directories to traverse and to exclude from " +
         "traversing using minus").when(traverse.isEmpty)
       _ <- runTraverse(traverse, exclude).when(traverse.nonEmpty)

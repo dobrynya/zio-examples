@@ -13,12 +13,12 @@ trait HttpClient {
 def download(url: String): ZStream[HttpClient, IOException, Byte] = ZStream.serviceWithStream[HttpClient](_.download(url))
 
 object HttpClient {
-  private class HttpClientLive(console: Console) extends HttpClient {
+  private class HttpClientLive extends HttpClient {
     def download(url: String): Stream[IOException, Byte] =
       ZStream.fromInputStreamZIO(
-        console.printLine(s"Downloading a file from $url") *>
-          Task(new URL(url).openStream()).refineToOrDie)
+        ZIO.logInfo(s"Downloading a file from $url") *>
+          ZIO.attemptBlocking(new URL(url).openStream()).refineToOrDie)
   }
 
-  val live: URLayer[Console, HttpClient] = (new HttpClientLive(_)).toLayer
+  val live: ULayer[HttpClient] = ZLayer.succeed(new HttpClientLive)
 }

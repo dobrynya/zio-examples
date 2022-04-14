@@ -9,16 +9,16 @@ import zio.*
 import zio.test.TestAspect._
 import scala.io.Source
 
-object Md5CheckerTest extends DefaultRunnableSpec {
+object Md5CheckerTest extends ZIOSpecDefault {
   override def spec =
     suite("Md5 checker tests")(
       test("readFileDescriptions should fail when reading a wrong URL")(
-        assertM(readFileDescriptions("file:non-existent-file"))(anything)
+        assertM(readFileDescriptions("file:non-existent-file").runDrain)(anything)
       ) @@ failing,
       test("readFileDescriptions should read a file successfully")(
         for {
           expected <- ZIO.attempt(Source.fromFile("urls.txt").getLines().toList.map(FileDescription.of))
-          actual <- readFileDescriptions("file:urls.txt")
+          actual <- readFileDescriptions("file:urls.txt").runCollect
         } yield assert(actual.toList)(equalTo(expected))
       ),
       test("Calculating a hash for a string should succeed")(

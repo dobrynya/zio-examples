@@ -5,7 +5,7 @@ import DirectoryWorm._
 import zio.test._
 import zio.test.Assertion._
 
-object DirectoryWormTest extends DefaultRunnableSpec {
+object DirectoryWormTest extends ZIOSpecDefault {
   override def spec =
     suite("Directory Worm test suite")(
       test("Make file description should include all required attributes") {
