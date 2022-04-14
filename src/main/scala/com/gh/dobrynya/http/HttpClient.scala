@@ -4,23 +4,21 @@ import java.io.IOException
 import java.net.URL
 import zio._
 import stream._
-import zio.blocking.Blocking
-import zio.console.Console
+import zio.Console
 
 trait HttpClient {
   def download(url: String): Stream[IOException, Byte]
 }
 
-object HttpClient {
-  def download(url: String): ZStream[Has[HttpClient], IOException, Byte] =
-    ZStream.accessStream[Has[HttpClient]](_.get.download(url))
+def download(url: String): ZStream[HttpClient, IOException, Byte] = ZStream.serviceWithStream[HttpClient](_.download(url))
 
-  private class HttpClientLive(console: Console.Service, blocking: Blocking.Service) extends HttpClient {
+object HttpClient {
+  private class HttpClientLive extends HttpClient {
     def download(url: String): Stream[IOException, Byte] =
-      Stream.fromInputStreamEffect(
-        console.putStrLn(s"Downloading a file from $url") *>
-          Task(new URL(url).openStream()).refineToOrDie).provide(Has(blocking))
+      ZStream.fromInputStreamZIO(
+        ZIO.logInfo(s"Downloading a file from $url") *>
+          ZIO.attemptBlocking(new URL(url).openStream()).refineToOrDie)
   }
 
-  val live: URLayer[Console with Blocking, Has[HttpClient]] = (new HttpClientLive(_, _)).toLayer
+  val live: ULayer[HttpClient] = ZLayer.succeed(new HttpClientLive)
 }
