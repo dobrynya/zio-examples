@@ -11,7 +11,6 @@ import scala.collection.immutable.SortedSet
 import scala.util.Try
 import java.time.LocalDate
 import java.time.Month.NOVEMBER
-import scala.annotation.targetName
 
 extension (f: Instrument => Boolean)
   def and(another: Instrument => Boolean) = (i: Instrument) => f(i) && another(i)

@@ -50,11 +50,10 @@ object DirectoryWorm extends ZIOAppDefault {
     }.catchAll(th => ZIO.succeed(th.printStackTrace()))
 
   private def makeIndicator: UIO[Unit] =
-    (Stream.tick(6.seconds) &> Stream.iterate(1)(_ + 1))
+    (ZStream.tick(6.seconds) &> ZStream.iterate(1)(_ + 1))
       .tap(counter => Console.print(if (counter % 10 == 0) "|" else "."))
       .runDrain
       .ignore
-
 
   override def run =
     for {

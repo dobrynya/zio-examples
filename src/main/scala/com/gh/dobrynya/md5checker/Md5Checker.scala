@@ -1,6 +1,6 @@
 package com.gh.dobrynya.md5checker
 
-import com.gh.dobrynya.http.{HttpClient, download}
+import com.gh.dobrynya.http.*
 import java.io.IOException
 import java.security.MessageDigest
 import zio.*
@@ -36,9 +36,9 @@ object Md5Checker extends ZIOAppDefault :
     readFileDescriptions(url).tap(files => Console.printLine(s"It needs to check the following files $files"))
       .mapZIOParUnordered(4)(calculateMd5).runDrain
 
-  override def run =
-    for {
+  override def run: ZIO[ZIOAppArgs, IOException, Unit] =
+    (for {
       args <- ZIOAppArgs.getArgs
       _ <- ZIO.logWarning("File list URL has not been specified, using default file:urls.txt").when(args.isEmpty)
-      _ <- program(args.headOption.getOrElse("file:urls.txt")).provide(HttpClient.live)
-    } yield ()
+      _ <- program(args.headOption.getOrElse("file:urls.txt"))
+    } yield ()).provideSome[ZIOAppArgs](HttpClient.live)

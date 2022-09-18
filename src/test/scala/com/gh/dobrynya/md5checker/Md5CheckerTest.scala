@@ -1,34 +1,38 @@
 package com.gh.dobrynya.md5checker
 
-import com.gh.dobrynya.md5checker.Md5Checker._
-import zio.test._
-import zio.stream._
-import Assertion._
-import com.gh.dobrynya.http.HttpClient
+import com.gh.dobrynya.md5checker.Md5Checker.*
+import zio.test.*
+import zio.stream.*
+import Assertion.*
+import com.gh.dobrynya.http.*
 import zio.*
-import zio.test.TestAspect._
+import zio.test.TestAspect.*
+import java.io.File
 import scala.io.Source
 
 object Md5CheckerTest extends ZIOSpecDefault {
   override def spec =
     suite("Md5 checker tests")(
       test("readFileDescriptions should fail when reading a wrong URL")(
-        assertM(readFileDescriptions("file:non-existent-file").runDrain)(anything)
+        assertZIO(readFileDescriptions("file:non-existent-file").runDrain)(anything)
       ) @@ failing,
       test("readFileDescriptions should read a file successfully")(
         for {
-          expected <- ZIO.attempt(Source.fromFile("urls.txt").getLines().toList.map(FileDescription.of))
+          expected <- ZStream.fromFile(new File("urls.txt"))
+            .via(ZPipeline.utf8Decode >>> ZPipeline.splitLines)
+            .map(FileDescription.of)
+            .runCollect
           actual <- readFileDescriptions("file:urls.txt").runCollect
-        } yield assert(actual.toList)(equalTo(expected))
+        } yield assertTrue(actual == expected)
       ),
       test("Calculating a hash for a string should succeed")(
-        assertM(
-          Stream.fromIterable("just a string to calculate its MD5 hash".getBytes())
+        assertZIO(
+          ZStream.fromIterable("just a string to calculate its MD5 hash".getBytes())
             .run(md5Hash))(equalTo("9a3bd129258e40744133e4a38e5ab99d")
         )
       ),
       test("Calculating a hash for a concrete file should succeed")(
-        assertM(
+        assertZIO(
           for {
             _ <- calculateMd5(FileDescription("file:gradle/wrapper/gradle-wrapper.jar",
               "ae4eb03f944bce8d3abe03b82bdbca35"))
@@ -39,5 +43,5 @@ object Md5CheckerTest extends ZIOSpecDefault {
             containsString("ae4eb03f944bce8d3abe03b82bdbca35")
         )
       )
-    ).provideCustom(HttpClient.live)
+    ).provide(HttpClient.live)
 }
