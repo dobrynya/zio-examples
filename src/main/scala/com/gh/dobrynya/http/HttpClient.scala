@@ -1,10 +1,9 @@
 package com.gh.dobrynya.http
 
 import java.io.IOException
-import java.net.URL
-import zio._
-import stream._
-import zio.Console
+import java.net.URI
+import zio.*
+import stream.*
 
 trait HttpClient {
   def download(url: String): Stream[IOException, Byte]
@@ -17,7 +16,7 @@ object HttpClient {
     def download(url: String): Stream[IOException, Byte] =
       ZStream.fromInputStreamZIO(
         ZIO.logInfo(s"Downloading a file from $url") *>
-          ZIO.attemptBlocking(new URL(url).openStream()).refineToOrDie)
+          ZIO.attemptBlocking(new URI(url).toURL.openStream()).refineToOrDie)
   }
 
   val live: ULayer[HttpClient] = ZLayer.succeed(new HttpClientLive)
