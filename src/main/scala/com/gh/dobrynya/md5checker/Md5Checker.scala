@@ -27,10 +27,9 @@ object Md5Checker extends ZIOAppDefault :
   private[md5checker] def calculateMd5(description: FileDescription): ZIO[HttpClient, IOException, Unit] =
     (if (description.valid)
       download(description.url).run(md5Hash).map(md5 => description.copy(calculatedMd5 = Some(md5)))
-        .catchAll(th => Console.printLine(s"An error occurred $th!")
+        .catchAll(th => ZIO.logError(s"An error occurred $th!")
           .as(description.copy(error = Some(s"Error: ${th.getMessage}"))))
-    else ZIO.succeed(description))
-      .map(printInfo).forEachZIO(Console.printLine(_)).unit
+    else ZIO.succeed(description)).map(printInfo).forEachZIO(Console.printLine(_)).unit
 
   private[md5checker] def program(url: String): ZIO[HttpClient, IOException, Unit] =
     readFileDescriptions(url).tap(files => Console.printLine(s"It needs to check the following files $files"))
