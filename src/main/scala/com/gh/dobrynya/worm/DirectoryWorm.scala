@@ -54,13 +54,13 @@ object DirectoryWorm extends ZIOAppDefault:
       .runDrain.fork.unit
 
   override def run: ZIO[ZIOAppArgs, IOException, Unit] =
-    for {
+    for
       args <- ZIOAppArgs.getArgs
       (exclude, traverse) = args.toList.partition(_.startsWith("-"))
       _ <- Console.printLine(if (traverse.nonEmpty) s"Directories ${traverse.mkString(",")} should be traversed"
       else "Program should be run with a list of directories to traverse and to exclude from traversing using minus")
       _ <- runTraverse(traverse, exclude).when(traverse.nonEmpty)
-    } yield ()
+    yield ()
 
   private def runTraverse(traverse: List[String], exclude: List[String]) =
     makeIndicator *>
