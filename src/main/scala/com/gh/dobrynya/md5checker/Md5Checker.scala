@@ -35,3 +35,12 @@ object Md5Checker extends ZIOAppDefault :
   override def run: ZIO[ZIOAppArgs & Scope, Throwable, Unit] =
     ZIOAppArgs.getArgs.flatMap(args => program(args.headOption.getOrElse("file:urls.txt")))
       .provideSome[ZIOAppArgs & Scope](Client.default)
+
+case object FileDescription:
+  def parse(raw: String): FileDescription =
+    val parts = raw.split(",")
+    if parts.length == 2 then FileDescription(parts(0), parts(1))
+    else FileDescription("", "", error = Some(s"Invalid data: $raw!"))
+
+case class FileDescription(url: String, md5: String, calculatedMd5: Option[String] = None, error: Option[String] = None):
+  def valid: Boolean = error.isEmpty
